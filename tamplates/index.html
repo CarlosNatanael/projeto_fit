@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plano Interativo de Fitness Matinal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .card-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-out, padding 0.5s ease-out;
+            padding: 0 1.5rem;
+        }
+        .card.open .card-content {
+            max-height: 1000px; /* Increased to accommodate new content */
+            padding: 1rem 1.5rem 1.5rem 1.5rem;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 320px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .gemini-suggestions {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background-color: #f0fdfa; /* Tailwind teal-50 */
+            border: 1px solid #ccfbf1; /* Tailwind teal-200 */
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            color: #134e4a; /* Tailwind teal-800 */
+        }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border-left-color: #0d9488; /* Tailwind teal-600 */
+            animation: spin 1s ease infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Modal styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 8px;
+            position: relative;
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800 font-sans">
+
+    <div class="container mx-auto px-4 py-8 md:py-12">
+        
+        <header class="text-center mb-10 md:mb-16">
+            <h1 class="text-4xl md:text-5xl font-bold text-teal-800">Plano de Fitness Matinal</h1>
+            <p class="mt-3 text-lg text-stone-600">O seu guia interativo para uma manhã ativa e saudável, agora com sugestões ✨ Gemini!</p>
+        </header>
+
+        <main class="max-w-3xl mx-auto">
+            
+            <div class="space-y-4">
+                
+                <div class="card bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden">
+                    <div class="card-header cursor-pointer p-6 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <span class="text-2xl mr-4">💧</span>
+                            <div>
+                                <h2 class="font-bold text-lg text-teal-700">04:30 - Despertar e Hidratação</h2>
+                                <p class="text-sm text-stone-500">Comece o seu dia da forma correta.</p>
+                            </div>
+                        </div>
+                        <span class="transform transition-transform duration-300 text-teal-600">&#9662;</span>
+                    </div>
+                    <div class="card-content">
+                        <p class="text-stone-700">Beba 1-2 copos de água (temperatura ambiente ou morna) para reidratar o corpo após o sono.</p>
+                    </div>
+                </div>
+
+                <div class="card bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden">
+                    <div class="card-header cursor-pointer p-6 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <span class="text-2xl mr-4">🍌</span>
+                            <div>
+                                <h2 class="font-bold text-lg text-teal-700">04:40 - Lanche Pré-Treino</h2>
+                                <p class="text-sm text-stone-500">Energia leve para começar (Opcional).</p>
+                            </div>
+                        </div>
+                        <span class="transform transition-transform duration-300 text-teal-600">&#9662;</span>
+                    </div>
+                    <div class="card-content">
+                        <p class="text-stone-700 mb-3">Consuma uma pequena porção de alimentos de fácil digestão. Opções:</p>
+                        <ul class="list-disc list-inside text-stone-600 space-y-1">
+                            <li>1 banana pequena ou 1/2 maçã.</li>
+                            <li>3-4 tâmaras ou damascos secos.</li>
+                            <li>1 copo pequeno (150ml) de sumo de fruta natural.</li>
+                        </ul>
+                        <button id="suggestPreWorkoutSnacks" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">
+                            ✨ Sugerir Mais Opções
+                        </button>
+                        <div id="preWorkoutSnacksSuggestions" class="gemini-suggestions" style="display: none;"></div>
+                        <div id="preWorkoutLoading" style="display: none;" class="mt-2 flex items-center text-sm text-teal-600"><div class="loading-spinner"></div>Aguarde...</div>
+                    </div>
+                </div>
+
+                <div class="card bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden">
+                    <div class="card-header cursor-pointer p-6 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <span class="text-2xl mr-4">🏃</span>
+                            <div>
+                                <h2 class="font-bold text-lg text-teal-700">04:50 - Aquecimento Dinâmico</h2>
+                                <p class="text-sm text-stone-500">Prepare o seu corpo para o exercício (5-7 min).</p>
+                            </div>
+                        </div>
+                        <span class="transform transition-transform duration-300 text-teal-600">&#9662;</span>
+                    </div>
+                    <div class="card-content">
+                        <p class="text-stone-700 mb-3">Aumente o fluxo sanguíneo e prepare as articulações:</p>
+                        <ul class="list-disc list-inside text-stone-600 space-y-1">
+                            <li>Rotações de tornozelos, joelhos e anca.</li>
+                            <li>Rotações de ombros e braços.</li>
+                            <li>Marcha no lugar, elevando os joelhos.</li>
+                            <li>Pequenos saltos no lugar.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden">
+                    <div class="card-header cursor-pointer p-6 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <span class="text-2xl mr-4">👟</span>
+                            <div>
+                                <h2 class="font-bold text-lg text-teal-700">05:00 - Caminhada de 7 km</h2>
+                                <p class="text-sm text-stone-500">A sua atividade cardiovascular principal.</p>
+                            </div>
+                        </div>
+                        <span class="transform transition-transform duration-300 text-teal-600">&#9662;</span>
+                    </div>
+                    <div class="card-content">
+                        <p class="text-stone-700">Mantenha um ritmo constante e desafiador, mas sustentável. Foque na boa postura: ombros para trás, abdómen contraído e olhar em frente.</p>
+                    </div>
+                </div>
+
+                <div class="card bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden">
+                    <div class="card-header cursor-pointer p-6 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <span class="text-2xl mr-4">💪</span>
+                            <div>
+                                <h2 class="font-bold text-lg text-teal-700">06:00 - Exercícios de Fortalecimento</h2>
+                                <p class="text-sm text-stone-500">Construa força e resistência (15-20 min).</p>
+                            </div>
+                        </div>
+                        <span class="transform transition-transform duration-300 text-teal-600">&#9662;</span>
+                    </div>
+                    <div class="card-content">
+                        <p class="text-stone-700 mb-4">Realize 3 séries de cada exercício. Descanse 30-60 segundos entre as séries, se necessário.</p>
+                        <ol class="space-y-3" id="exerciseList">
+                            <li class="p-3 bg-stone-100 rounded-md" data-exercise-name="Polichinelos"><strong>1. Polichinelos:</strong> 20 repetições</li>
+                            <li class="p-3 bg-stone-100 rounded-md" data-exercise-name="Agachamentos"><strong>2. Agachamentos:</strong> 20 repetições (foco na forma)</li>
+                            <li class="p-3 bg-stone-100 rounded-md" data-exercise-name="Afundos"><strong>3. Afundos:</strong> 20 repetições (10 por perna)</li>
+                            <li class="p-3 bg-stone-100 rounded-md" data-exercise-name="Flexões"><strong>4. Flexões:</strong> 10 repetições (adapte com joelhos no chão)</li>
+                            <li class="p-3 bg-stone-100 rounded-md" data-exercise-name="Prancha Abdominal"><strong>5. Prancha Abdominal:</strong> 60 segundos</li>
+                        </ol>
+                        <div class="mt-6">
+                            <label for="variationExerciseSelect" class="block text-sm font-medium text-stone-700 mb-1">Selecione um exercício para variações:</label>
+                            <select id="variationExerciseSelect" class="w-full p-2 border border-stone-300 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 mb-2">
+                                <option value="Polichinelos">Polichinelos</option>
+                                <option value="Agachamentos">Agachamentos</option>
+                                <option value="Afundos">Afundos</option>
+                                <option value="Flexões">Flexões</option>
+                                <option value="Prancha Abdominal">Prancha Abdominal</option>
+                            </select>
+                            <button id="getExerciseVariations" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">
+                                ✨ Obter Variações de Exercício
+                            </button>
+                            <div id="exerciseVariationLoading" style="display: none;" class="mt-2 flex items-center text-sm text-teal-600"><div class="loading-spinner"></div>Aguarde...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden">
+                    <div class="card-header cursor-pointer p-6 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <span class="text-2xl mr-4">🧘</span>
+                            <div>
+                                <h2 class="font-bold text-lg text-teal-700">06:15 - Desaquecimento e Alongamentos</h2>
+                                <p class="text-sm text-stone-500">Recuperação e flexibilidade.</p>
+                            </div>
+                        </div>
+                        <span class="transform transition-transform duration-300 text-teal-600">&#9662;</span>
+                    </div>
+                    <div class="card-content">
+                        <p class="text-stone-700 mb-3">Reduza o ritmo com uma caminhada leve por 2-3 minutos, seguida de alongamentos estáticos suaves (20-30 segundos cada) para:</p>
+                        <ul class="list-disc list-inside text-stone-600 space-y-1">
+                           <li>Panturrilhas e Coxas (anterior e posterior)</li>
+                           <li>Glúteos e Costas</li>
+                           <li>Peito e Ombros</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden">
+                    <div class="card-header cursor-pointer p-6 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <span class="text-2xl mr-4">🍳</span>
+                            <div>
+                                <h2 class="font-bold text-lg text-teal-700">06:35 - Pequeno-almoço Nutritivo</h2>
+                                <p class="text-sm text-stone-500">Reabasteça o seu corpo.</p>
+                            </div>
+                        </div>
+                        <span class="transform transition-transform duration-300 text-teal-600">&#9662;</span>
+                    </div>
+                    <div class="card-content">
+                        <p class="text-stone-700 mb-3">Faça uma refeição equilibrada com proteínas e carboidratos. Exemplos:</p>
+                        <ul class="list-disc list-inside text-stone-600 space-y-1">
+                            <li>Ovos mexidos com 1-2 fatias de pão integral + 1 fruta.</li>
+                            <li>Papa de aveia com fruta e um punhado de frutos secos.</li>
+                            <li>Iogurte natural com granola (sem açúcar) e fruta.</li>
+                        </ul>
+                        <button id="suggestPostWorkoutMeals" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">
+                           ✨ Sugerir Mais Opções
+                        </button>
+                        <div id="postWorkoutMealsSuggestions" class="gemini-suggestions" style="display: none;"></div>
+                        <div id="postWorkoutLoading" style="display: none;" class="mt-2 flex items-center text-sm text-teal-600"><div class="loading-spinner"></div>Aguarde...</div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <section class="mt-16 md:mt-24">
+            <div class="text-center mb-10">
+                <h2 class="text-3xl font-bold text-teal-800">Visualize a Sua Progressão</h2>
+                <p class="mt-2 max-w-2xl mx-auto text-stone-600">O conceito de progressão gradual é fundamental. Aumentar ligeiramente a dificuldade ao longo do tempo é o que gera resultados. Selecione um exercício para ver um exemplo de como pode progredir ao longo de quatro semanas.</p>
+            </div>
+            
+            <div class="max-w-3xl mx-auto bg-white p-4 sm:p-6 rounded-lg shadow-md border border-stone-200">
+                <div class="mb-4">
+                    <label for="exercise-select" class="block text-sm font-medium text-stone-700 mb-1">Escolha um Exercício:</label>
+                    <select id="exercise-select" class="w-full p-2 border border-stone-300 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500">
+                        <option value="agachamentos">Agachamentos (Repetições)</option>
+                        <option value="flexoes">Flexões (Repetições)</option>
+                        <option value="prancha">Prancha (Segundos)</option>
+                    </select>
+                </div>
+                <div class="chart-container">
+                    <canvas id="progressChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section class="mt-16 md:mt-24">
+            <div class="text-center mb-10">
+                <h2 class="text-3xl font-bold text-teal-800">Dicas para o Sucesso</h2>
+                <p class="mt-2 text-stone-600">Lembre-se destes pontos-chave para manter a sua rotina.</p>
+            </div>
+            <div class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
+                    <h3 class="font-bold text-teal-700 mb-2">Consistência</h3>
+                    <p class="text-stone-600 text-sm">É o fator mais importante. Tente seguir a rotina na maioria dos dias para criar o hábito.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
+                    <h3 class="font-bold text-teal-700 mb-2">Escute o Seu Corpo</h3>
+                    <p class="text-stone-600 text-sm">Se sentir dor (não apenas desconforto muscular), cansaço excessivo ou estiver doente, descanse. O descanso é crucial.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
+                    <h3 class="font-bold text-teal-700 mb-2">Sono de Qualidade</h3>
+                    <p class="text-stone-600 text-sm">Tente dormir 7-9 horas por noite. O sono é vital para a recuperação, energia e resultados.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
+                    <h3 class="font-bold text-teal-700 mb-2">Alimentação Geral</h3>
+                    <p class="text-stone-600 text-sm">Lembre-se que uma alimentação equilibrada ao longo de todo o dia é fundamental.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
+                    <h3 class="font-bold text-teal-700 mb-2">Prazer na Atividade</h3>
+                    <p class="text-stone-600 text-sm">Torne a atividade agradável. Ouça música, podcasts ou aprecie a natureza para se manter motivado.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
+                    <h3 class="font-bold text-teal-700 mb-2">Segurança</h3>
+                    <p class="text-stone-600 text-sm">Se caminhar muito cedo, escolha percursos iluminados e seguros. Use roupa visível.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div id="exerciseVariationModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="closeVariationModal">&times;</span>
+            <h3 id="variationModalTitle" class="text-xl font-bold text-teal-700 mb-4">Variações de Exercício</h3>
+            <div id="variationModalBody" class="text-stone-700">
+                </div>
+            <div id="variationModalLoading" style="display: none;" class="mt-2 flex items-center text-sm text-teal-600"><div class="loading-spinner"></div>A carregar variações...</div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                const header = card.querySelector('.card-header');
+                const arrow = header.querySelector('span:last-child');
+                header.addEventListener('click', () => {
+                    card.classList.toggle('open');
+                    if (card.classList.contains('open')) {
+                        arrow.style.transform = 'rotate(180deg)';
+                    } else {
+                        arrow.style.transform = 'rotate(0deg)';
+                    }
+                });
+            });
+
+            const chartData = {
+                agachamentos: { label: 'Repetições de Agachamento', data: [20, 22, 25, 28] },
+                flexoes: { label: 'Repetições de Flexão', data: [10, 11, 12, 14] },
+                prancha: { label: 'Segundos em Prancha', data: [60, 65, 70, 75] }
+            };
+
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            let progressChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4'],
+                    datasets: [{
+                        label: chartData.agachamentos.label,
+                        data: chartData.agachamentos.data,
+                        backgroundColor: 'rgba(20, 110, 110, 0.6)',
+                        borderColor: 'rgba(20, 110, 110, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, grid: { color: 'rgba(200, 200, 200, 0.2)' }}, x: { grid: { display: false }} },
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { title: function() { return ''; }, label: function(context) { return `${context.dataset.label}: ${context.parsed.y}`; }}}}
+                }
+            });
+
+            const exerciseSelect = document.getElementById('exercise-select');
+            exerciseSelect.addEventListener('change', (event) => {
+                const selectedExercise = event.target.value;
+                const newData = chartData[selectedExercise];
+                progressChart.data.datasets[0].label = newData.label;
+                progressChart.data.datasets[0].data = newData.data;
+                progressChart.update();
+            });
+
+            // Gemini API Integration
+            const apiKey = ""; // API Key will be supplied by the environment
+
+            async function callGeminiAPI(promptText) {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const payload = { contents: [{ role: "user", parts: [{ text: promptText }] }] };
+                
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        console.error('Gemini API Error:', errorData);
+                        return `Erro ao contactar a API Gemini: ${errorData.error?.message || response.statusText}. Verifique a consola para mais detalhes.`;
+                    }
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        return result.candidates[0].content.parts[0].text;
+                    } else {
+                        console.error('Resposta inesperada da API Gemini:', result);
+                        return "Não foi possível obter sugestões neste momento (resposta inesperada).";
+                    }
+                } catch (error) {
+                    console.error('Fetch Error:', error);
+                    return "Erro de rede ao tentar obter sugestões. Verifique a sua ligação.";
+                }
+            }
+
+            function displaySuggestions(elementId, suggestionsText, loadingElementId) {
+                const suggestionsDiv = document.getElementById(elementId);
+                const loadingDiv = document.getElementById(loadingElementId);
+                if (suggestionsDiv && loadingDiv) {
+                    suggestionsDiv.innerHTML = suggestionsText.replace(/\n/g, '<br>');
+                    suggestionsDiv.style.display = 'block';
+                    loadingDiv.style.display = 'none';
+                }
+            }
+            
+            function displayModalSuggestions(title, suggestionsText) {
+                const modal = document.getElementById('exerciseVariationModal');
+                const modalTitle = document.getElementById('variationModalTitle');
+                const modalBody = document.getElementById('variationModalBody');
+                const modalLoading = document.getElementById('variationModalLoading');
+
+                modalTitle.textContent = title;
+                modalBody.innerHTML = suggestionsText.replace(/\n/g, '<br>');
+                modalLoading.style.display = 'none';
+                modalBody.style.display = 'block';
+                modal.style.display = 'block';
+            }
+
+
+            // Pre-Workout Snacks
+            const suggestPreWorkoutBtn = document.getElementById('suggestPreWorkoutSnacks');
+            if (suggestPreWorkoutBtn) {
+                suggestPreWorkoutBtn.addEventListener('click', async () => {
+                    document.getElementById('preWorkoutLoading').style.display = 'flex';
+                    document.getElementById('preWorkoutSnacksSuggestions').style.display = 'none';
+                    const prompt = "Sugira 2-3 lanches pré-treino leves e de fácil digestão, ricos em carboidratos, para quem vai fazer uma caminhada de 7km e exercícios de força. Apresente como uma lista simples.";
+                    const suggestions = await callGeminiAPI(prompt);
+                    displaySuggestions('preWorkoutSnacksSuggestions', suggestions, 'preWorkoutLoading');
+                });
+            }
+
+            // Post-Workout Meals
+            const suggestPostWorkoutBtn = document.getElementById('suggestPostWorkoutMeals');
+            if (suggestPostWorkoutBtn) {
+                suggestPostWorkoutBtn.addEventListener('click', async () => {
+                    document.getElementById('postWorkoutLoading').style.display = 'flex';
+                    document.getElementById('postWorkoutMealsSuggestions').style.display = 'none';
+                    const prompt = "Sugira 2-3 opções de pequeno-almoço nutritivo pós-treino, com boa combinação de proteínas e carboidratos, para recuperação muscular. Apresente como uma lista simples.";
+                    const suggestions = await callGeminiAPI(prompt);
+                    displaySuggestions('postWorkoutMealsSuggestions', suggestions, 'postWorkoutLoading');
+                });
+            }
+            
+            // Exercise Variations
+            const getVariationsBtn = document.getElementById('getExerciseVariations');
+            const variationExerciseSelect = document.getElementById('variationExerciseSelect');
+            const variationModal = document.getElementById('exerciseVariationModal');
+            const closeVariationModalBtn = document.getElementById('closeVariationModal');
+            const variationModalLoading = document.getElementById('variationModalLoading');
+            const variationModalBody = document.getElementById('variationModalBody');
+
+
+            if (getVariationsBtn && variationExerciseSelect && variationModal && closeVariationModalBtn) {
+                getVariationsBtn.addEventListener('click', async () => {
+                    const selectedExercise = variationExerciseSelect.value;
+                    variationModalBody.style.display = 'none';
+                    variationModalLoading.style.display = 'flex';
+                    document.getElementById('variationModalTitle').textContent = `Variações para ${selectedExercise}`;
+                    variationModal.style.display = 'block';
+
+                    const prompt = `Sugira 2-3 variações para o exercício de ${selectedExercise}, adequadas para quem treina em casa e quer diversificar a rotina. Apresente como uma lista simples e concisa.`;
+                    const suggestions = await callGeminiAPI(prompt);
+                    displayModalSuggestions(`Variações para ${selectedExercise}`, suggestions);
+                });
+
+                closeVariationModalBtn.onclick = function() {
+                    variationModal.style.display = "none";
+                }
+            }
+            
+            window.onclick = function(event) {
+                if (event.target == variationModal) {
+                    variationModal.style.display = "none";
+                }
+            }
+
+        });
+    </script>
+
+</body>
+</html>
